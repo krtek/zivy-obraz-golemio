@@ -55,7 +55,7 @@ console.log(`Starting: marks sync, from ${fromDate.toISOString().split('T')[0]} 
 
 fetchSubjectMarks(fromDate, now)
   .pipe(
-    map(subjects => buildMarksQueryString(subjects, now, gradesLinePrefix, gradesUpdatedParam)),
+    map(marks => buildMarksQueryString(marks, gradesLinePrefix, gradesUpdatedParam)),
     tap(queryString => console.log(`Prepared query string: ${queryString}`)),
     switchMap(queryString => uploadData(queryString)),
     tap(response => console.log('Upload response:', response))
@@ -65,23 +65,22 @@ fetchSubjectMarks(fromDate, now)
     error: error => console.error('Error occurred during marks sync:', error)
   });
 
-function buildMarksQueryString(subjects, generatedAt, linePrefix, updatedParam) {
-  if (!Array.isArray(subjects) || subjects.length === 0) {
+function buildMarksQueryString(marks, linePrefix, updatedParam) {
+  if (!Array.isArray(marks) || marks.length === 0) {
     return [
       `${linePrefix}_1=${encodeURIComponent('Žádné nové známky za vybrané období.')}`,
-      `${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`
+      `${updatedParam}=${encodeURIComponent(formatDate(new Date()))}`
     ].join('&');
   }
 
-  const sortedSubjects = [...subjects].sort((a, b) => a.subjectName.localeCompare(b.subjectName, 'cs'));
-
-  const lines = sortedSubjects.slice(0, 10).map((subject, index) => {
-    const marksText = subject.marks.join(', ');
-    const line = `${subject.subjectName}: ${marksText}`;
+  const lines = marks.map((mark, index) => {
+    const line = `${mark.subjectName}: ${mark.markValue} (${formatDate(mark.editDate)})`;
     return `${linePrefix}_${index + 1}=${encodeURIComponent(line)}`;
   });
 
-  lines.push(`${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`);
+  // Add the last update timestamp based on the newest mark's edit date
+  const newestEditDate = marks[0]?.editDate ?? new Date();
+  lines.push(`${updatedParam}=${encodeURIComponent(formatDate(newestEditDate))}`);
 
   return lines.join('&');
 }

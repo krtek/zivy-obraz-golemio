@@ -79,30 +79,49 @@ function isMarkWithinRange(mark, fromDate, toDate) {
   function fetchSubjectMarks(fromDate, toDate) {
     return from(fetchAccessToken()).pipe(
       switchMap(token =>
-        axios.get(`${baseUrl}/api/3/marks`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          params: {
-            from: toIsoDate(fromDate),
-            to: toIsoDate(toDate)
-          }
-        })
+      axios.get(`${baseUrl}/api/3/marks`, {
+        headers: {
+        Authorization: `Bearer ${token}`
+        },
+        params: {
+        from: toIsoDate(fromDate),
+        to: toIsoDate(toDate)
+        }
+      })
       ),
-      map(response => response.data?.Subjects ?? response.data?.subjects ?? []),
-      map(subjects =>
-        subjects
-          .map(subject => {
-            const subjectName = extractSubjectName(subject);
-            const marks = (subject?.Marks ?? subject?.marks ?? [])
-              .filter(mark => isMarkWithinRange(mark, fromDate, toDate))
-              .map(mark => extractMarkValue(mark))
-              .filter(value => value);
-
-            return { subjectName, marks };
-          })
-          .filter(subject => subject.marks.length > 0)
-      )
+      map(response => {
+      return response.data?.Subjects ?? response.data?.subjects ?? [];
+      }),
+      map(subjects => {
+        // Flatten all marks from all subjects into a single array
+        const allMarks = [];
+        
+        subjects.forEach(subject => {
+          const subjectName = extractSubjectName(subject);
+          const marks = subject?.Marks ?? subject?.marks ?? [];
+          
+          marks.forEach(mark => {
+            const markValue = extractMarkValue(mark);
+            const editDateString = mark?.EditDate ?? mark?.MarkDate ?? mark?.Date ?? mark?.Created ?? mark?.CreatedDate;
+            const editDate = editDateString ? new Date(editDateString) : null;
+            
+            if (markValue && editDate && !Number.isNaN(editDate.getTime())) {
+              allMarks.push({
+                subjectName,
+                markValue,
+                editDate,
+                caption: mark?.Caption ?? mark?.Theme ?? '',
+                theme: mark?.Theme ?? ''
+              });
+            }
+          });
+        });
+        
+        // Sort by edit date (newest first) and take the latest 10
+        return allMarks
+          .sort((a, b) => b.editDate - a.editDate)
+          .slice(0, 10);
+      })
     );
   }
 
