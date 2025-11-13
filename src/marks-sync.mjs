@@ -73,8 +73,15 @@ function buildMarksQueryString(marks, linePrefix, updatedParam) {
     ].join('&');
   }
 
+  const formatShortDate = (date) => {
+    return new Intl.DateTimeFormat('cs-CZ', {
+      day: 'numeric',
+      month: 'numeric'
+    }).format(date);
+  };
+
   const lines = marks.map((mark, index) => {
-    const line = `${mark.subjectName}: ${mark.markValue} (${formatDate(mark.editDate)})`;
+    const line = `${mark.subjectName}: ${mark.markValue} (${formatShortDate(mark.editDate)})`;
     return `${linePrefix}_${index + 1}=${encodeURIComponent(line)}`;
   });
 
