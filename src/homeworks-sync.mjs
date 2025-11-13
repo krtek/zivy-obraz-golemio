@@ -82,7 +82,8 @@ function buildHomeworksQueryString(homeworks, generatedAt, linePrefix, updatedPa
     const content = (homework.content || 'Bez popisu').replace(/\s+/g, ' ');
     const dueDateText = formatDate(homework.dueDate);
     const line = `[${indicator}] ${subject}: ${content} – ${dueDateText}`;
-    return `${linePrefix}_${index + 1}=${encodeURIComponent(line)}`;
+    const truncatedLine = line.length > 50 ? line.substring(0, 49) + '...' : line;
+    return `${linePrefix}_${index + 1}=${encodeURIComponent(truncatedLine)}`;
   });
 
   lines.push(`${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`);
