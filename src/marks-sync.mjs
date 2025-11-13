@@ -81,7 +81,7 @@ function buildMarksQueryString(marks, linePrefix, updatedParam) {
   };
 
   const lines = marks.map((mark, index) => {
-    const line = `${mark.subjectName}: ${mark.markValue} (${formatShortDate(mark.editDate)})`;
+    const line = `${mark.subjectName.trim()}: ${mark.markValue} (${formatShortDate(mark.editDate)})`;
     return `${linePrefix}_${index + 1}=${encodeURIComponent(line)}`;
   });
 
