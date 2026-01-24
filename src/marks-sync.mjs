@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { createBakalariClient } from './utils/bakalari.mjs';
+import { log } from './utils/logger.mjs';
 import { createUploader } from './utils/upload.mjs';
 import { formatDate } from './utils/util.mjs';
 
@@ -51,17 +52,17 @@ const now = new Date();
 const fromDate = new Date();
 fromDate.setMonth(fromDate.getMonth() - 1);
 
-console.log(`Starting: marks sync, from ${fromDate.toISOString().split('T')[0]} to ${now.toISOString().split('T')[0]}`);
+log(`Starting: marks sync, from ${fromDate.toISOString().split('T')[0]} to ${now.toISOString().split('T')[0]}`);
 
 fetchSubjectMarks(fromDate, now)
   .pipe(
     map(subjects => buildMarksQueryString(subjects, now, gradesLinePrefix, gradesUpdatedParam)),
-    tap(queryString => console.log(`Prepared query string: ${queryString}`)),
+    tap(queryString => log(`Prepared query string: ${queryString}`)),
     switchMap(queryString => uploadData(queryString)),
-    tap(response => console.log('Upload response:', response))
+    tap(response => log('Upload response:', response))
   )
   .subscribe({
-    next: () => console.log('Marks successfully posted.'),
+    next: () => log('Marks successfully posted.'),
     error: error => console.error('Error occurred during marks sync:', error)
   });
 

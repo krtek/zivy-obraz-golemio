@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { of } from 'rxjs';
 import { map, switchMap } from 'rxjs/operators';
+import { log } from './utils/logger.mjs';
 import { getRandomProverb } from './utils/proverb.mjs';
 import { createUploader } from './utils/upload.mjs';
 
@@ -23,7 +24,7 @@ const wrapLength = Number.parseInt(wrapLengthRaw, 10) || 0;
 
 const uploadData = createUploader(importKey);
 
-console.log(`Starting: proverb sync, wrap length: ${wrapLength}`);
+log(`Starting: proverb sync, wrap length: ${wrapLength}`);
 
 // Set up an interval to fetch data every n minute
 // timer(0, intervalMs)
@@ -36,6 +37,6 @@ of(true)
     switchMap(queryString => uploadData(queryString))
   )
   .subscribe({
-    next: queryString => console.log(`Proverb successfully posted: ${queryString}`),
+    next: queryString => log(`Proverb successfully posted: ${queryString}`),
     error: error => console.error('Error occurred:', error)
   });

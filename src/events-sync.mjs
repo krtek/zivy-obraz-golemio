@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { createBakalariClient } from './utils/bakalari.mjs';
+import { log } from './utils/logger.mjs';
 import { createUploader } from './utils/upload.mjs';
 import { describeRelativeDay, formatDate, formatTime, startOfUtcDay } from './utils/util.mjs';
 
@@ -52,19 +53,19 @@ const fromDate = startOfUtcDay(now);
 const toDate = new Date(fromDate);
 toDate.setMonth(toDate.getMonth() + 1);
 
-console.log(
+log(
   `Starting: events sync, from ${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]}`
 );
 
 fetchEvents(fromDate, toDate)
   .pipe(
     map(events => buildEventsQueryString(events, now, eventsLinePrefix, eventsUpdatedParam)),
-    tap(queryString => console.log(`Prepared query string: ${queryString}`)),
+    tap(queryString => log(`Prepared query string: ${queryString}`)),
     switchMap(queryString => uploadData(queryString)),
-    tap(response => console.log('Upload response:', response))
+    tap(response => log('Upload response:', response))
   )
   .subscribe({
-    next: () => console.log('Events successfully posted.'),
+    next: () => log('Events successfully posted.'),
     error: error => console.error('Error occurred during events sync:', error)
   });
 

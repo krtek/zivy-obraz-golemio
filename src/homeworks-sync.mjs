@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { createBakalariClient } from './utils/bakalari.mjs';
+import { log } from './utils/logger.mjs';
 import { createUploader } from './utils/upload.mjs';
 import { describeRelativeDay, formatDate, startOfUtcDay } from './utils/util.mjs';
 
@@ -52,19 +53,19 @@ const fromDate = startOfUtcDay(now);
 const toDate = new Date(fromDate);
 toDate.setMonth(toDate.getMonth() + 1);
 
-console.log(
+log(
   `Starting: homeworks sync, from ${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]}`
 );
 
 fetchHomeworks(fromDate, toDate)
   .pipe(
     map(homeworks => buildHomeworksQueryString(homeworks, now, homeworksLinePrefix, homeworksUpdatedParam)),
-    tap(queryString => console.log(`Prepared query string: ${queryString}`)),
+    tap(queryString => log(`Prepared query string: ${queryString}`)),
     switchMap(queryString => uploadData(queryString)),
-    tap(response => console.log('Upload response:', response))
+    tap(response => log('Upload response:', response))
   )
   .subscribe({
-    next: () => console.log('Homeworks successfully posted.'),
+    next: () => log('Homeworks successfully posted.'),
     error: error => console.error('Error occurred during homeworks sync:', error)
   });
 
