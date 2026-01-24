@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
 import { map, switchMap, tap } from 'rxjs/operators';
 import { createBakalariClient } from './utils/bakalari.mjs';
+import { log } from './utils/logger.mjs';
 import { createUploader } from './utils/upload.mjs';
 import { formatDate, formatTime, startOfUtcDay } from './utils/util.mjs';
 
@@ -50,17 +51,17 @@ const uploadData = createUploader(importKey);
 const now = new Date();
 const today = startOfUtcDay(now);
 
-console.log(`Starting: timetable sync for ${today.toISOString().split('T')[0]}`);
+log(`Starting: timetable sync for ${today.toISOString().split('T')[0]}`);
 
 fetchTimetableForDay(today)
   .pipe(
     map(lessons => buildTimetableQueryString(lessons, now, timetableParam, timetableUpdatedParam)),
-    tap(queryString => console.log(`Prepared query string length: ${queryString.length}`)),
+    tap(queryString => log(`Prepared query string length: ${queryString.length}`)),
     switchMap(queryString => uploadData(queryString)),
-    tap(response => console.log('Upload response:', response))
+    tap(response => log('Upload response:', response))
   )
   .subscribe({
-    next: () => console.log('Timetable successfully posted.'),
+    next: () => log('Timetable successfully posted.'),
     error: error => console.error('Error occurred during timetable sync:', error)
   });
 

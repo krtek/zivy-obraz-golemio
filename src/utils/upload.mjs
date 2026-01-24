@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { from } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { log } from './logger.mjs';
 
 function createImportUrl(importKey) {
   if (typeof importKey !== 'string' || !importKey.trim()) {
@@ -17,7 +18,7 @@ export function createUploader(importKey) {
   return function uploadData(queryString) {
     const suffix = queryString ? `&${queryString}` : '';
     const finalUrl = `${baseUrl}${suffix}`;
-    console.log('uploadData(): sending request', {
+    log('uploadData(): sending request', {
       queryLength: typeof queryString === 'string' ? queryString.length : 0
     });
     return from(axios.post(finalUrl)).pipe(map(response => response.data));

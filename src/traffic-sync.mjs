@@ -3,6 +3,7 @@ import { filter, of, tap } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 
 import { createDepartureFetcher } from './utils/download-golemio.mjs';
+import { log } from './utils/logger.mjs';
 import { formatDate } from './utils/util.mjs';
 import { createUploader } from './utils/upload.mjs';
 
@@ -45,16 +46,16 @@ const uploadData = createUploader(importKey);
 of(0)
   .pipe(
     tap(() =>
-      console.log(
+      log(
         `Fetching data: ${formatDate(new Date())}, stopId: ${stopId}, departurePrefix: ${departurePrefix}`
       )
     ),
     switchMap(() => fetchDepartureData(stopId, -9, departurePrefix)),
     filter(queryTimeTable => queryTimeTable.length > 0),
     switchMap(queryTimeTable => uploadData(queryTimeTable)),
-    tap(response => console.log('Upload response:', response))
+    tap(response => log('Upload response:', response))
   )
   .subscribe({
-    next: () => console.log('Timetable successfully posted.'),
+    next: () => log('Timetable successfully posted.'),
     error: error => console.error('Error occurred:', error)
   });
