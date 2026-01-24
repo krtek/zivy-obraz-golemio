@@ -1,4 +1,4 @@
-let loggingEnabled = true;
+let loggingEnabled = false;
 
 export const setLoggingEnabled = (enabled) => {
   loggingEnabled = enabled;
