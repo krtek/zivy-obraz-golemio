@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 3
 
     env:
-      GRADES_LINE_PREFIX: grades_line
-      GRADES_UPDATED_PARAM: grades_updated
+      GRADES_LINE_PREFIX: grades_line_kuba
+      GRADES_UPDATED_PARAM: grades_updated_kuba
 
     steps:
       - uses: actions/checkout@v4
