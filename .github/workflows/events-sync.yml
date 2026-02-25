@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 3
 
     env:
-      EVENTS_LINE_PREFIX: events_line
-      EVENTS_UPDATED_PARAM: events_updated
+      EVENTS_LINE_PREFIX: events_line_kuba
+      EVENTS_UPDATED_PARAM: events_updated_kuba
 
     steps:
       - uses: actions/checkout@v4
