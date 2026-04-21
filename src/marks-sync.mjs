@@ -1,6 +1,7 @@
 import { parseArgs } from 'node:util';
+import { from } from 'rxjs';
 import { map, switchMap, tap } from 'rxjs/operators';
-import { createBakalariClient } from './utils/bakalari.mjs';
+import axios from 'axios';
 import { log } from './utils/logger.mjs';
 import { createUploader } from './utils/upload.mjs';
 import { formatDate } from './utils/util.mjs';
@@ -11,7 +12,7 @@ const { values, positionals } = parseArgs({
     'bakalari-username': { type: 'string' },
     'bakalari-password': { type: 'string' },
     'import-key': { type: 'string' },
-    'grades-line-prefix': { type: 'string' },
+    'grades-param': { type: 'string' },
     'grades-updated-param': { type: 'string' }
   },
   allowPositionals: true
@@ -33,18 +34,12 @@ const importKey = resolveValue('import-key', 3);
 
 if (!bakalariBaseUrl || !bakalariUsername || !bakalariPassword || !importKey) {
   throw new Error(
-    'Usage: node src/marks-sync.mjs <bakalariBaseUrl> <username> <password> <importKey> [linePrefix] [updatedParam]'
+    'Usage: node src/marks-sync.mjs <bakalariBaseUrl> <username> <password> <importKey> [gradesParam] [updatedParam]'
   );
 }
 
-const gradesLinePrefix = resolveWithDefault('grades-line-prefix', 4, 'grades_line');
+const gradesParam = resolveWithDefault('grades-param', 4, 'grades');
 const gradesUpdatedParam = resolveWithDefault('grades-updated-param', 5, 'grades_updated');
-
-const { fetchSubjectMarks } = createBakalariClient({
-  baseUrl: bakalariBaseUrl,
-  username: bakalariUsername,
-  password: bakalariPassword
-});
 
 const uploadData = createUploader(importKey);
 
@@ -52,37 +47,81 @@ const now = new Date();
 const fromDate = new Date();
 fromDate.setMonth(fromDate.getMonth() - 1);
 
+const baseUrl = bakalariBaseUrl.trim().replace(/\/$/, '');
+
 log(`Starting: marks sync, from ${fromDate.toISOString().split('T')[0]} to ${now.toISOString().split('T')[0]}`);
 
-fetchSubjectMarks(fromDate, now)
-  .pipe(
-    map(subjects => buildMarksQueryString(subjects, now, gradesLinePrefix, gradesUpdatedParam)),
-    tap(queryString => log(`Prepared query string: ${queryString}`)),
-    switchMap(queryString => uploadData(queryString)),
-    tap(response => log('Upload response:', response))
-  )
-  .subscribe({
-    next: () => log('Marks successfully posted.'),
-    error: error => console.error('Error occurred during marks sync:', error)
+from(fetchLatestMarks()).pipe(
+  tap(marks => console.log('\n' + renderMarksText(marks, now) + '\n')),
+  map(marks => buildMarksQueryString(marks, now, gradesParam, gradesUpdatedParam)),
+  tap(queryString => log(`Prepared query string: ${queryString}`)),
+  switchMap(queryString => uploadData(queryString)),
+  tap(response => log('Upload response:', response))
+).subscribe({
+  next: () => log('Marks successfully posted.'),
+  error: error => console.error('Error occurred during marks sync:', error)
+});
+
+async function fetchLatestMarks() {
+  const body = new URLSearchParams({
+    client_id: 'ANDR',
+    grant_type: 'password',
+    username: bakalariUsername,
+    password: bakalariPassword
   });
 
-function buildMarksQueryString(subjects, generatedAt, linePrefix, updatedParam) {
-  if (!Array.isArray(subjects) || subjects.length === 0) {
-    return [
-      `${linePrefix}_1=${encodeURIComponent('Žádné nové známky za vybrané období.')}`,
-      `${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`
-    ].join('&');
+  const loginRes = await axios.post(`${baseUrl}/api/login`, body, {
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+  });
+
+  if (!loginRes.data?.access_token) {
+    throw new Error('Bakaláři login did not return an access token.');
   }
 
-  const sortedSubjects = [...subjects].sort((a, b) => a.subjectName.localeCompare(b.subjectName, 'cs'));
+  const token = loginRes.data.access_token;
 
-  const lines = sortedSubjects.slice(0, 10).map((subject, index) => {
-    const marksText = subject.marks.join(', ');
-    const line = `${subject.subjectName}: ${marksText}`;
-    return `${linePrefix}_${index + 1}=${encodeURIComponent(line)}`;
+  const res = await axios.get(`${baseUrl}/api/3/marks`, {
+    headers: { Authorization: `Bearer ${token}` },
+    params: {
+      from: fromDate.toISOString().split('T')[0],
+      to: now.toISOString().split('T')[0]
+    }
   });
 
-  lines.push(`${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`);
+  const subjects = res.data?.Subjects ?? res.data?.subjects ?? [];
 
-  return lines.join('&');
+  return subjects
+    .flatMap(subject => {
+      const subjectName = subject?.Subject?.Abbrev?.trim() ?? subject?.Subject?.Name ?? 'Neznámý předmět';
+      return (subject?.Marks ?? subject?.marks ?? []).map(mark => ({
+        date: new Date(mark.MarkDate ?? mark.Date ?? mark.Created),
+        subjectName,
+        grade: mark.MarkText ?? mark.Text ?? mark.Caption ?? '',
+        caption: mark.Caption ?? mark.Theme ?? ''
+      }));
+    })
+    .filter(mark => mark.grade && !isNaN(mark.date.getTime()))
+    .sort((a, b) => b.date - a.date)
+    .slice(0, 6);
+}
+
+function formatMarkDate(date) {
+  return new Intl.DateTimeFormat('cs-CZ', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Prague' })
+    .format(date)
+    .replace(/\s/g, '');
+}
+
+function renderMarksText(marks, generatedAt) {
+  if (!marks.length) {
+    return 'Žádné nové známky za vybrané období.';
+  }
+
+  return marks.map(mark => `${formatMarkDate(mark.date)} ${mark.subjectName} (${mark.caption}): ${mark.grade}`).join('\n');
+}
+
+function buildMarksQueryString(marks, generatedAt, param, updatedParam) {
+  return [
+    `${param}=${encodeURIComponent(renderMarksText(marks, generatedAt))}`,
+    `${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`
+  ].join('&');
 }

@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 3
 
     env:
-      GRADES_LINE_PREFIX: grades_line
+      GRADES_PARAM: grades
       GRADES_UPDATED_PARAM: grades_updated
 
     steps:
@@ -42,5 +42,5 @@ jobs:
             --bakalari-username="${{ secrets.BAKALARI_USERNAME }}" \
             --bakalari-password="${{ secrets.BAKALARI_PASSWORD }}" \
             --import-key="${{ secrets.ZIVY_OBRAZ_IMPORT_KEY }}" \
-            --grades-line-prefix="${GRADES_LINE_PREFIX}" \
+            --grades-param="${GRADES_PARAM}" \
             --grades-updated-param="${GRADES_UPDATED_PARAM}"

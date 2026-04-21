@@ -3,7 +3,7 @@ import { map, switchMap, tap } from 'rxjs/operators';
 import { createBakalariClient } from './utils/bakalari.mjs';
 import { log } from './utils/logger.mjs';
 import { createUploader } from './utils/upload.mjs';
-import { formatDate, formatTime, startOfUtcDay } from './utils/util.mjs';
+import { formatDate, startOfUtcDay } from './utils/util.mjs';
 
 const { values, positionals } = parseArgs({
   options: {
@@ -55,6 +55,7 @@ log(`Starting: timetable sync for ${today.toISOString().split('T')[0]}`);
 
 fetchTimetableForDay(today)
   .pipe(
+    tap(lessons => console.log('\n' + renderTimetableAsciiArt(lessons, now) + '\n')),
     map(lessons => buildTimetableQueryString(lessons, now, timetableParam, timetableUpdatedParam)),
     tap(queryString => log(`Prepared query string length: ${queryString.length}`)),
     switchMap(queryString => uploadData(queryString)),
@@ -82,20 +83,19 @@ function renderTimetableAsciiArt(lessons, generatedAt) {
     ].join('\n');
   }
 
-  const header = '+----------+------------------------------+--------------------------+';
-  const lines = [header, '| hodina   | předmět / skupina            | místnost / učitel        |', header];
+  const header = '+-------+---------------------------------------------+';
+  const lines = [header, '| čas   | předmět / skupina                           |', header];
 
   lessons.forEach(lesson => {
     const slot = formatLessonSlot(lesson);
     const subject = formatSubjectCell(lesson);
-    const details = formatDetailsCell(lesson);
-    const status = lesson.removed ? 'X vyjmuto' : 'OK platí';
     const note = lesson.note ? lesson.note : lesson.removed ? 'Vyjmuto z rozvrhu' : '';
+    const subjectWithNote = note ? `${subject} (${note})` : subject;
 
-    lines.push(`| ${pad(slot, 8)} | ${pad(subject, 28)} | ${pad(status, 24)} |`);
-    lines.push(`| ${pad('', 8)} | ${pad(details, 28)} | ${pad(note, 24)} |`);
-    lines.push(header);
+    lines.push(`| ${pad(slot, 5)} | ${pad(subjectWithNote, 43)} |`);
   });
+
+  lines.push(header);
 
   lines.push(`Aktualizováno: ${formatDate(generatedAt)}`);
 
@@ -103,28 +103,12 @@ function renderTimetableAsciiArt(lessons, generatedAt) {
 }
 
 function formatLessonSlot(lesson) {
+  if (lesson.beginTime && lesson.endTime) {
+    return lesson.beginTime.padStart(5, ' ');
+  }
+
   const hourLabel = Number.isInteger(lesson.order) ? `${lesson.order}.` : '??';
-  const timeRange = formatLessonTimeRange(lesson.startTime, lesson.endTime);
-  return `${hourLabel} ${timeRange}`.trim();
-}
-
-function formatLessonTimeRange(startTime, endTime) {
-  const formattedStart = formatLessonTime(startTime);
-  const formattedEnd = formatLessonTime(endTime);
-
-  if (formattedStart && formattedEnd) {
-    return `${formattedStart}-${formattedEnd}`;
-  }
-
-  return formattedStart || formattedEnd || '';
-}
-
-function formatLessonTime(value) {
-  if (!(value instanceof Date) || Number.isNaN(value.getTime())) {
-    return '';
-  }
-
-  return formatTime(value);
+  return hourLabel;
 }
 
 function formatSubjectCell(lesson) {

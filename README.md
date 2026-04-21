@@ -2,6 +2,16 @@
 
 Tento projekt obsahuje JavaScriptové skripty pro synchronizaci dat mezi různými API a platformou Živý Obraz.
 
+Díky moc @felikf za původní [projekt](felikf/zivy-obraz-golemio). Naše instance Bakalářů je trochu jiná a máme i trochu jiné požadavky, tak jsem se rozhodl tenhle fork v zásadě odpojit a změny nemergovat do upstreamu.  
+
+## Změny oproti originálnímu [felikf/zivy-obraz-golemio](https://github.com/felikf/zivy-obraz-golemio)
+
+- **Rozvrh:** Načítá seznam předmětů z `/api/3/subjects` a zobrazuje jejich plné názvy. Sloupec místnost/učitel odstraněn. Místo čísla hodiny se zobrazuje čas začátku hodiny (z `Hours` v odpovědi API). Kompaktnější tabulka bez oddělovacích čar mezi řádky.
+- **Domácí úkoly:** Výstup sloučen do jediné proměnné (`homeworks`) místo samostatných `homeworks_line_N`. Zobrazuje posledních 5 úkolů, každý na samostatném řádku.
+- **Známky:** Výstup sloučen do jediné proměnné (`grades`) místo samostatných `grades_line_N`. Zobrazuje posledních 6 známek seřazených od nejnovější, ve formátu `14.04. Čj (Diktát): 5`, každá na samostatném řádku.
+
+---
+
 ## Forkování a úprava pro vlastní použití
 
 1. Vytvořte fork:

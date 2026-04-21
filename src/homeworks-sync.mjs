@@ -11,7 +11,7 @@ const { values, positionals } = parseArgs({
     'bakalari-username': { type: 'string' },
     'bakalari-password': { type: 'string' },
     'import-key': { type: 'string' },
-    'homeworks-line-prefix': { type: 'string' },
+    'homeworks-param': { type: 'string' },
     'homeworks-updated-param': { type: 'string' }
   },
   allowPositionals: true
@@ -33,11 +33,11 @@ const importKey = resolveValue('import-key', 3);
 
 if (!bakalariBaseUrl || !bakalariUsername || !bakalariPassword || !importKey) {
   throw new Error(
-    'Usage: node src/homeworks-sync.mjs <bakalariBaseUrl> <username> <password> <importKey> [linePrefix] [updatedParam]'
+    'Usage: node src/homeworks-sync.mjs <bakalariBaseUrl> <username> <password> <importKey> [homeworksParam] [updatedParam]'
   );
 }
 
-const homeworksLinePrefix = resolveWithDefault('homeworks-line-prefix', 4, 'homeworks_line');
+const homeworksParam = resolveWithDefault('homeworks-param', 4, 'homeworks');
 const homeworksUpdatedParam = resolveWithDefault('homeworks-updated-param', 5, 'homeworks_updated');
 
 const { fetchHomeworks } = createBakalariClient({
@@ -59,7 +59,8 @@ log(
 
 fetchHomeworks(fromDate, toDate)
   .pipe(
-    map(homeworks => buildHomeworksQueryString(homeworks, now, homeworksLinePrefix, homeworksUpdatedParam)),
+    tap(homeworks => console.log('\n' + renderHomeworksText(homeworks, now) + '\n')),
+    map(homeworks => buildHomeworksQueryString(homeworks, now, homeworksParam, homeworksUpdatedParam)),
     tap(queryString => log(`Prepared query string: ${queryString}`)),
     switchMap(queryString => uploadData(queryString)),
     tap(response => log('Upload response:', response))
@@ -69,24 +70,27 @@ fetchHomeworks(fromDate, toDate)
     error: error => console.error('Error occurred during homeworks sync:', error)
   });
 
-function buildHomeworksQueryString(homeworks, generatedAt, linePrefix, updatedParam) {
+function renderHomeworksText(homeworks, generatedAt) {
   if (!Array.isArray(homeworks) || homeworks.length === 0) {
-    return [
-      `${linePrefix}_1=${encodeURIComponent('Žádné nadcházející domácí úkoly.')}`,
-      `${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`
-    ].join('&');
+    return 'Žádné nadcházející domácí úkoly.';
   }
 
-  const lines = homeworks.slice(0, 10).map((homework, index) => {
-    const indicator = describeRelativeDay(generatedAt, homework.dueDate);
-    const subject = homework.subjectName;
-    const content = (homework.content || 'Bez popisu').replace(/\s+/g, ' ');
-    const dueDateText = formatDate(homework.dueDate);
-    const line = `[${indicator}] ${subject}: ${content} – ${dueDateText}`;
-    return `${linePrefix}_${index + 1}=${encodeURIComponent(line)}`;
-  });
-
-  lines.push(`${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`);
-
-  return lines.join('&');
+  return homeworks
+    .slice(-5)
+    .map(homework => {
+      const indicator = describeRelativeDay(generatedAt, homework.dueDate);
+      const subject = homework.subjectName;
+      const content = (homework.content || 'Bez popisu').replace(/\s+/g, ' ');
+      const dueDateText = formatDate(homework.dueDate);
+      return `[${indicator}] ${subject}: ${content}`;
+    })
+    .join('\n');
 }
+
+function buildHomeworksQueryString(homeworks, generatedAt, param, updatedParam) {
+  return [
+    `${param}=${encodeURIComponent(renderHomeworksText(homeworks, generatedAt))}`,
+    `${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`
+  ].join('&');
+}
+

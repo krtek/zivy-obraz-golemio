@@ -23,7 +23,17 @@ function toIsoDate(date) {
   return date.toISOString().split('T')[0];
 }
 
-function extractSubjectName(subject) {
+function extractSubjectName(subject, subjectsById = {}) {
+  const subjectId =
+    subject?.SubjectId ?? subject?.Subject?.Id ?? subject?.Subject?.SubjectId ?? subject?.subjectId;
+
+  if (subjectId && typeof subjectId === 'string') {
+    const s = subjectsById[subjectId.trim()];
+    if (s) {
+      return s?.SubjectName ?? s?.Name ?? s?.name ?? s?.SubjectAbbrev ?? s?.Abbrev ?? s?.abbrev ?? 'Neznámý předmět';
+    }
+  }
+
   return subject?.Subject?.Abbrev ?? subject?.Subject?.Name ?? subject?.Name ?? subject?.Abbrev ?? 'Neznámý předmět';
 }
 
@@ -223,18 +233,30 @@ function isHomeworkWithinRange(homework, fromDate, toDate) {
     return from(
       (async () => {
         const token = await fetchAccessToken();
-        const response = await axios.get(`${baseUrl}/api/3/timetable/actual`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          },
-          params: {
-            date: toIsoDate(targetDay)
-          }
-        });
+        const [timetableResponse, subjectsResponse] = await Promise.all([
+          axios.get(`${baseUrl}/api/3/timetable/actual`, {
+            headers: { Authorization: `Bearer ${token}` },
+            params: { date: toIsoDate(targetDay) }
+          }),
+          axios.get(`${baseUrl}/api/3/subjects`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        ]);
 
-        const days = response.data?.Days ?? response.data?.days ?? [];
+        const rawSubjects = subjectsResponse.data?.Subjects ?? subjectsResponse.data?.subjects ?? [];
+        const subjectsById = Object.fromEntries(
+          rawSubjects
+            .map(s => [s?.SubjectID ?? s?.SubjectId ?? s?.Id ?? s?.id, s])
+            .filter(([id]) => typeof id === 'string' && id.trim())
+            .map(([id, s]) => [id.trim(), s])
+        );
+
+        const rawHours = timetableResponse.data?.Hours ?? timetableResponse.data?.hours ?? [];
+        const hoursById = Object.fromEntries(rawHours.map(h => [h.Id, h]));
+
+        const days = timetableResponse.data?.Days ?? timetableResponse.data?.days ?? [];
         const day = findMatchingTimetableDay(days, targetDay) ?? {};
-        const lessons = extractLessonsFromTimetableDay(day, targetDay);
+        const lessons = extractLessonsFromTimetableDay(day, targetDay, subjectsById, hoursById);
 
         return lessons.sort((first, second) => compareLessons(first, second));
       })()
@@ -319,26 +341,29 @@ function findMatchingTimetableDay(days, targetDay) {
   });
 }
 
-function extractLessonsFromTimetableDay(day, targetDay) {
+function extractLessonsFromTimetableDay(day, targetDay, subjectsById = {}, hoursById = {}) {
   const rawLessons = day?.Atoms ?? day?.Lessons ?? day?.atoms ?? day?.lessons ?? [];
 
   return rawLessons
-    .map(lesson => ({
-      order: extractLessonOrder(lesson),
-      subjectName: extractSubjectName(lesson),
-      group: extractLessonGroup(lesson),
-      teacher: extractTeacherName(lesson),
-      room: extractRoomName(lesson),
-      startTime: extractLessonStart(lesson, targetDay),
-      endTime: extractLessonEnd(lesson, targetDay),
-      removed: isLessonRemoved(lesson),
-      note: extractLessonNote(lesson)
-    }))
+    .map(lesson => {
+      const hour = hoursById[lesson?.HourId] ?? null;
+      return {
+        order: extractLessonOrder(lesson),
+        beginTime: hour?.BeginTime ?? null,
+        endTime: hour?.EndTime ?? null,
+        subjectName: extractSubjectName(lesson, subjectsById),
+        group: extractLessonGroup(lesson),
+        teacher: extractTeacherName(lesson),
+        room: extractRoomName(lesson),
+        removed: isLessonRemoved(lesson),
+        note: extractLessonNote(lesson)
+      };
+    })
     .filter(lesson => Boolean(lesson.subjectName) || Boolean(lesson.room) || lesson.order !== null);
 }
 
 function extractLessonOrder(lesson) {
-  const possibleOrders = [lesson?.Hour, lesson?.hour, lesson?.Period, lesson?.period, lesson?.Order, lesson?.order];
+  const possibleOrders = [lesson?.HourId, lesson?.Hour, lesson?.hour, lesson?.Period, lesson?.period, lesson?.Order, lesson?.order];
   const found = possibleOrders.find(value => Number.isInteger(Number(value)));
   return typeof found === 'undefined' ? null : Number(found);
 }

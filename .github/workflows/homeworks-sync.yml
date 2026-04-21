@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 3
 
     env:
-      HOMEWORKS_LINE_PREFIX: homeworks_line
+      HOMEWORKS_PARAM: homeworks
       HOMEWORKS_UPDATED_PARAM: homeworks_updated
 
     steps:
@@ -42,5 +42,5 @@ jobs:
             --bakalari-username="${{ secrets.BAKALARI_USERNAME }}" \
             --bakalari-password="${{ secrets.BAKALARI_PASSWORD }}" \
             --import-key="${{ secrets.ZIVY_OBRAZ_IMPORT_KEY }}" \
-            --homeworks-line-prefix="${HOMEWORKS_LINE_PREFIX}" \
+            --homeworks-param="${HOMEWORKS_PARAM}" \
             --homeworks-updated-param="${HOMEWORKS_UPDATED_PARAM}"
