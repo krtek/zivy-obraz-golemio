@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 3
 
     env:
-      HOMEWORKS_LINE_PREFIX: homeworks_line_kuba
-      HOMEWORKS_UPDATED_PARAM: homeworks_updated_kuba
+      HOMEWORKS_LINE_PREFIX: homeworks_line
+      HOMEWORKS_UPDATED_PARAM: homeworks_updated
 
     steps:
       - uses: actions/checkout@v4
