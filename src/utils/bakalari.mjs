@@ -23,6 +23,10 @@ function toIsoDate(date) {
   return date.toISOString().split('T')[0];
 }
 
+function extractSubjectName(subject) {
+  return subject?.Subject?.Abbrev ?? subject?.Subject?.Name ?? subject?.Name ?? subject?.Abbrev ?? 'Neznámý předmět';
+}
+
 export function createBakalariClient(config) {
   const { baseUrl, username, password } = normalizeConfig(config);
 
@@ -46,10 +50,6 @@ export function createBakalariClient(config) {
 
     return response.data.access_token;
   }
-
-function extractSubjectName(subject) {
-  return subject?.Subject?.Abbrev ?? subject?.Subject?.Name ?? subject?.Name ?? subject?.Abbrev ?? 'Neznámý předmět';
-}
 
 function extractMarkValue(mark) {
   return (
