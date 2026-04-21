@@ -48,3 +48,6 @@ Thumbs.db
 
 .swc
 reports
+
+# Local environment variables 
+.env.local
