@@ -53,9 +53,7 @@ const fromDate = startOfUtcDay(now);
 const toDate = new Date(fromDate);
 toDate.setMonth(toDate.getMonth() + 1);
 
-log(
-  `Starting: homeworks sync, from ${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]}`
-);
+log(`Starting: homeworks sync, from ${fromDate.toISOString().split('T')[0]} to ${toDate.toISOString().split('T')[0]}`);
 
 fetchHomeworks(fromDate, toDate)
   .pipe(
@@ -94,4 +92,3 @@ function buildHomeworksQueryString(homeworks, generatedAt, param, updatedParam) 
     `${updatedParam}=${encodeURIComponent(formatDate(generatedAt))}`
   ].join('&');
 }
-

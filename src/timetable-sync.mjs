@@ -12,7 +12,8 @@ const { values, positionals } = parseArgs({
     'bakalari-password': { type: 'string' },
     'import-key': { type: 'string' },
     'timetable-param': { type: 'string' },
-    'timetable-updated-param': { type: 'string' }
+    'timetable-updated-param': { type: 'string' },
+    timezone: { type: 'string' }
   },
   allowPositionals: true
 });
@@ -39,6 +40,7 @@ if (!bakalariBaseUrl || !bakalariUsername || !bakalariPassword || !importKey) {
 
 const timetableParam = resolveWithDefault('timetable-param', 4, 'timetable_ascii');
 const timetableUpdatedParam = resolveWithDefault('timetable-updated-param', 5, 'timetable_updated');
+const timezone = resolveWithDefault('timezone', 6, 'Europe/Prague');
 
 const { fetchTimetableForDay } = createBakalariClient({
   baseUrl: bakalariBaseUrl,
@@ -49,11 +51,11 @@ const { fetchTimetableForDay } = createBakalariClient({
 const uploadData = createUploader(importKey);
 
 const now = new Date();
-const today = startOfUtcDay(now);
+const targetDay = resolveTargetDay(now, timezone);
 
-log(`Starting: timetable sync for ${today.toISOString().split('T')[0]}`);
+log(`Starting: timetable sync for ${targetDay.toISOString().split('T')[0]} (timezone: ${timezone})`);
 
-fetchTimetableForDay(today)
+fetchTimetableForDay(targetDay)
   .pipe(
     tap(lessons => console.log('\n' + renderTimetableAsciiArt(lessons, now) + '\n')),
     map(lessons => buildTimetableQueryString(lessons, now, timetableParam, timetableUpdatedParam)),
@@ -129,4 +131,45 @@ function pad(value, width) {
   const trimmedLength = Math.max(0, width - 3);
   const sliced = safeValue.length > width ? `${safeValue.slice(0, trimmedLength)}...` : safeValue;
   return sliced.padEnd(width, ' ');
+}
+
+function resolveTargetDay(now, timezone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    hour: 'numeric',
+    weekday: 'short',
+    hour12: false
+  }).formatToParts(now);
+
+  const hour = parseInt(parts.find(p => p.type === 'hour').value, 10);
+  const weekday = parts.find(p => p.type === 'weekday').value;
+
+  const base = startOfUtcDay(now);
+
+  // On weekends, always show Monday
+  if (weekday === 'Sat' || weekday === 'Sun') {
+    const next = new Date(base);
+    const daysUntilMonday = weekday === 'Sat' ? 2 : 1;
+    next.setUTCDate(next.getUTCDate() + daysUntilMonday);
+    return next;
+  }
+
+  // On weekdays, show tomorrow from 16:00 (skip weekend to Monday)
+  if (hour < 16) return base;
+
+  const next = new Date(base);
+  next.setUTCDate(next.getUTCDate() + 1);
+
+  const nextWeekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'short'
+  }).format(next);
+
+  if (nextWeekday === 'Sat') {
+    next.setUTCDate(next.getUTCDate() + 2);
+  } else if (nextWeekday === 'Sun') {
+    next.setUTCDate(next.getUTCDate() + 1);
+  }
+
+  return next;
 }
