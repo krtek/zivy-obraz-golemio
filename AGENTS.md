@@ -1,8 +1,10 @@
 # AGENTS.md
 
-## What this repo is
+## Agent behaviour
 
-Node.js scripts that sync data from external APIs (Golemio transit, Bakaláři school system) to the [Živý Obraz](https://zivyobraz.eu) digital display platform. Each script runs once and exits; scheduling is handled entirely by GitHub Actions cron.
+- Never commit or push changes without explicitly asking the user first.
+
+## What this repo is that sync data from external APIs (Golemio transit, Bakaláři school system) to the [Živý Obraz](https://zivyobraz.eu) digital display platform. Each script runs once and exits; scheduling is handled entirely by GitHub Actions cron.
 
 ## Commands
 
