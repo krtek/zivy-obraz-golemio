@@ -82,7 +82,8 @@ function renderHomeworksText(homeworks, generatedAt) {
       const subject = homework.subjectName;
       const content = (homework.content || 'Bez popisu').replace(/\s+/g, ' ');
       const dueDateText = formatDate(homework.dueDate);
-      return `[${indicator}] ${subject}: ${content}`;
+      const line = `[${indicator}] ${subject}: ${content}`;
+      return line.length > 45 ? line.slice(0, 45) + '...' : line;
     })
     .join('\n');
 }
