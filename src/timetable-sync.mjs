@@ -89,8 +89,8 @@ function renderTimetableAsciiArt(lessons, generatedAt, targetDay) {
     ].join('\n');
   }
 
-  const tableHeader = '+-------+---------------------------------------------+';
-  const lines = [header, tableHeader, '| čas   | předmět / skupina                           |', tableHeader];
+  const tableHeader = '+-------+------------------------------------+';
+  const lines = [header, tableHeader, '| čas   | předmět / skupina                  |', tableHeader];
 
   lessons.forEach(lesson => {
     const slot = formatLessonSlot(lesson);
@@ -98,7 +98,7 @@ function renderTimetableAsciiArt(lessons, generatedAt, targetDay) {
     const note = lesson.note ? lesson.note : lesson.removed ? 'Vyjmuto z rozvrhu' : '';
     const subjectWithNote = note ? `${subject} (${note})` : subject;
 
-    lines.push(`| ${pad(slot, 5)} | ${pad(subjectWithNote, 43)} |`);
+    lines.push(`| ${pad(slot, 5)} | ${pad(subjectWithNote, 34)} |`);
   });
 
   lines.push(tableHeader);
