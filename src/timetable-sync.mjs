@@ -57,8 +57,8 @@ log(`Starting: timetable sync for ${targetDay.toISOString().split('T')[0]} (time
 
 fetchTimetableForDay(targetDay)
   .pipe(
-    tap(lessons => console.log('\n' + renderTimetableAsciiArt(lessons, now) + '\n')),
-    map(lessons => buildTimetableQueryString(lessons, now, timetableParam, timetableUpdatedParam)),
+    tap(lessons => console.log('\n' + renderTimetableAsciiArt(lessons, now, targetDay) + '\n')),
+    map(lessons => buildTimetableQueryString(lessons, now, targetDay, timetableParam, timetableUpdatedParam)),
     tap(queryString => log(`Prepared query string length: ${queryString.length}`)),
     switchMap(queryString => uploadData(queryString)),
     tap(response => log('Upload response:', response))
@@ -68,25 +68,29 @@ fetchTimetableForDay(targetDay)
     error: error => console.error('Error occurred during timetable sync:', error)
   });
 
-function buildTimetableQueryString(lessons, generatedAt, asciiParam, updatedParam) {
-  const asciiArt = renderTimetableAsciiArt(lessons, generatedAt);
+function buildTimetableQueryString(lessons, generatedAt, targetDay, asciiParam, updatedParam) {
+  const asciiArt = renderTimetableAsciiArt(lessons, generatedAt, targetDay);
   const updated = formatDate(generatedAt);
 
   return [`${asciiParam}=${encodeURIComponent(asciiArt)}`, `${updatedParam}=${encodeURIComponent(updated)}`].join('&');
 }
 
-function renderTimetableAsciiArt(lessons, generatedAt) {
+function renderTimetableAsciiArt(lessons, generatedAt, targetDay) {
+  const weekdayName = new Intl.DateTimeFormat('cs-CZ', { timeZone: 'Europe/Prague', weekday: 'long' }).format(targetDay);
+  const capitalizedWeekday = weekdayName.charAt(0).toUpperCase() + weekdayName.slice(1);
+  const header = `${capitalizedWeekday} (${formatDate(generatedAt)})`;
+
   if (!Array.isArray(lessons) || lessons.length === 0) {
     return [
+      header,
       '+-------------------------------+',
       '| Dnes v rozvrhu nejsou hodiny. |',
-      '+-------------------------------+',
-      `Aktualizováno: ${formatDate(generatedAt)}`
+      '+-------------------------------+'
     ].join('\n');
   }
 
-  const header = '+-------+---------------------------------------------+';
-  const lines = [header, '| čas   | předmět / skupina                           |', header];
+  const tableHeader = '+-------+---------------------------------------------+';
+  const lines = [header, tableHeader, '| čas   | předmět / skupina                           |', tableHeader];
 
   lessons.forEach(lesson => {
     const slot = formatLessonSlot(lesson);
@@ -97,9 +101,7 @@ function renderTimetableAsciiArt(lessons, generatedAt) {
     lines.push(`| ${pad(slot, 5)} | ${pad(subjectWithNote, 43)} |`);
   });
 
-  lines.push(header);
-
-  lines.push(`Aktualizováno: ${formatDate(generatedAt)}`);
+  lines.push(tableHeader);
 
   return lines.join('\n');
 }
