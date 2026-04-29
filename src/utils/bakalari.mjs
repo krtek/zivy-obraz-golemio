@@ -335,9 +335,15 @@ function isEventWithinRange(event, fromDate, toDate) {
 }
 
 function findMatchingTimetableDay(days, targetDay) {
+  const targetDateString = toIsoDate(targetDay);
   return days.find(day => {
-    const dayDate = parseDate(day?.Date ?? day?.DayDate ?? day?.date ?? day?.dayDate);
-    return dayDate && startOfUtcDay(dayDate).getTime() === targetDay.getTime();
+    const raw = day?.Date ?? day?.DayDate ?? day?.date ?? day?.dayDate;
+    if (!raw) return false;
+    // Compare only the calendar date portion (YYYY-MM-DD), ignoring timezone offset,
+    // because the API returns local midnight with a +02:00 offset which shifts to the
+    // previous UTC day when parsed.
+    const dateString = typeof raw === 'string' ? raw.slice(0, 10) : toIsoDate(parseDate(raw));
+    return dateString === targetDateString;
   });
 }
 
